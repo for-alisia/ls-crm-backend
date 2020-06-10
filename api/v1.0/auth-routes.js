@@ -1,6 +1,6 @@
 const express = require('express');
 
-const authCtrl = require('../controllers/auth-controller');
+const authCtrl = require('../../controllers/auth-controller');
 
 const router = express.Router();
 

@@ -3,12 +3,15 @@ const fs = require('fs');
 
 const express = require('express');
 const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+
+const HttpError = require('./utils/http-error');
+const { MONGO_URL, MONGOOSE_CONF } = require('./config');
 
 const corsHeaders = require('./middlewares/cors-headers');
-const HttpError = require('./utils/http-error');
-const authRoutes = require('./routes/auth-routes');
-const userRoutes = require('./routes/user-routes');
-const newsRoutes = require('./routes/news-routes');
+const authRoutes = require('./api/v1.0/auth-routes');
+const userRoutes = require('./api/v1.0/user-routes');
+const newsRoutes = require('./api/v1.0/news-routes');
 
 const app = express();
 
@@ -41,6 +44,14 @@ app.use((error, req, res, next) => {
   });
 });
 
-const server = app.listen(process.env.PORT || 8000, function () {
-  console.log('Server is listening on:' + server.address().port);
-});
+mongoose
+  .connect(MONGO_URL, MONGOOSE_CONF)
+  .then(() => {
+    console.log('Successfull connection');
+    app.listen(process.env.PORT || 8000, function () {
+      console.log(`Server is listening on: ${process.env.PORT || '8000'}`);
+    });
+  })
+  .catch((err) => {
+    console.log(err);
+  });
