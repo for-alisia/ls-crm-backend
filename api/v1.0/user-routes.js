@@ -1,10 +1,15 @@
 const express = require('express');
+const { check } = require('express-validator');
 
 const userCtrl = require('../../controllers/user-controller');
 
 const router = express.Router();
 
-router.post('/registration', userCtrl.createUser);
+router.post(
+  '/registration',
+  [check('username').not().isEmpty(), check('password').isLength({ min: 4 })],
+  userCtrl.createUser
+);
 router.get('/profile', userCtrl.getUser);
 router.patch('/profile', userCtrl.updateUser);
 router.delete('/users/:id', userCtrl.deleteUser);
