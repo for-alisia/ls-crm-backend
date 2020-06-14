@@ -9,7 +9,6 @@ const HttpError = require('./utils/http-error');
 const { MONGO_URL, MONGOOSE_CONF } = require('./config');
 
 const corsHeaders = require('./middlewares/cors-headers');
-const authRoutes = require('./api/v1.0/auth-routes');
 const userRoutes = require('./api/v1.0/user-routes');
 const newsRoutes = require('./api/v1.0/news-routes');
 
@@ -21,7 +20,6 @@ app.use('/uploads/images', express.static(path.join('uploads', 'images')));
 
 app.use(corsHeaders);
 
-app.use('/api', authRoutes);
 app.use('/api', userRoutes);
 app.use('/api', newsRoutes);
 

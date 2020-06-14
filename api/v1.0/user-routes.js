@@ -15,5 +15,7 @@ router.patch('/profile', userCtrl.updateUser);
 router.delete('/users/:id', userCtrl.deleteUser);
 router.get('/users', userCtrl.getAllUsers);
 router.patch('/users/:id/permission', userCtrl.updatePermission);
+router.post('/login', userCtrl.login);
+router.post('/refresh-token', userCtrl.refreshToken);
 
 module.exports = router;

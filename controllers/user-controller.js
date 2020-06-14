@@ -47,10 +47,17 @@ const createUser = async (req, res, next) => {
     surName,
     middleName,
     password: hashedPassword,
+    permission: {
+      chat: { C: true, R: true, U: true, D: true },
+      news: { C: true, R: true, U: true, D: true },
+      settings: { C: true, R: true, U: true, D: true },
+    },
   });
 
+  let savedUser;
+
   try {
-    await createdUser.save();
+    savedUser = await createdUser.save();
   } catch (err) {
     return next(new HttpError('Creating user failed, please try again', 500));
   }
@@ -67,23 +74,27 @@ const createUser = async (req, res, next) => {
   }
 
   res.status(201).json({
-    userId: createdUser.id,
-    token,
+    id: createdUser.id,
+    accessToken: token,
     firstName: createdUser.firstName,
     surName: createdUser.surName,
     middleName: createdUser.middleName,
+    permission: createdUser.permission,
   });
 };
 
 const getUser = async (req, res, next) => {
   res.send('User object');
 };
+
 const updateUser = async (req, res, next) => {
   res.send('User updated');
 };
+
 const deleteUser = async (req, res, next) => {
   res.send('User deleted');
 };
+
 const getAllUsers = async (req, res, next) => {
   let users;
   try {
@@ -94,10 +105,21 @@ const getAllUsers = async (req, res, next) => {
 
   res.json({ users: users.map((u) => u.toObject({ getters: true })) });
 };
+
 const updatePermission = async (req, res, next) => {
   res.send('Permissions updated');
 };
 
+const login = async (req, res, next) => {
+  res.send('User signed in');
+};
+
+const refreshToken = async (req, res, next) => {
+  res.send('Token refreshed');
+};
+
+exports.login = login;
+exports.refreshToken = refreshToken;
 exports.createUser = createUser;
 exports.getUser = getUser;
 exports.updateUser = updateUser;
