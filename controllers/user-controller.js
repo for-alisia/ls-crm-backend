@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const HttpError = require("../utils/http-error");
 const User = require("../models/user-model");
 
+// CREATION
 const createUser = async (req, res, next) => {
   const errors = validationResult(req);
   // Return Error if inputs are not valid
@@ -47,39 +48,13 @@ const createUser = async (req, res, next) => {
     },
   });
 
-  // Save user in db
   try {
-    await createdUser.save();
+    const tokens = await createdUser.generateAuthToken();
+
+    res.send(generateResponseUser(createdUser, tokens));
   } catch (err) {
     return next(new HttpError("Creating user failed, please try again", 500));
   }
-
-  // Set access token for this user
-  let token;
-  const expireAt = Math.floor(Date.now()) + 60 * 1000;
-  try {
-    token = jwt.sign(
-      {
-        userId: createdUser.id,
-        exp: expireAt / 1000,
-      },
-      process.env.SECRET
-    );
-  } catch (err) {
-    return next(new HttpError("Signing up failed, please try again", 500));
-  }
-
-  // Send user's object to the client
-  res.status(201).json({
-    id: createdUser.id,
-    accessToken: token,
-    accessTokenExpiredAt: expireAt,
-    username: createdUser.username,
-    firstName: createdUser.firstName,
-    surName: createdUser.surName,
-    middleName: createdUser.middleName,
-    permission: createdUser.permission,
-  });
 };
 
 const getUser = async (req, res, next) => {
@@ -109,14 +84,37 @@ const updatePermission = async (req, res, next) => {
   res.send("Permissions updated");
 };
 
+// LOGIN
 const login = async (req, res, next) => {
-  res.send("User signed in");
+  const { username, password } = req.body;
+  try {
+    const user = await User.findByCredentials(username, password);
+    const tokens = await user.generateAuthToken();
+
+    res.send(generateResponseUser(user, tokens));
+  } catch (err) {
+    return next(new HttpError("Invalid credentials provided", 403));
+  }
 };
 
 const refreshToken = async (req, res, next) => {
   res.send("Token refreshed");
 };
 
+const generateResponseUser = (user, tokens) => {
+  return {
+    id: user.id,
+    username: user.username,
+    firstName: user.firstName,
+    middleName: user.middleName,
+    surName: user.surName,
+    permission: user.permission,
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    accessTokenExpiredAt: tokens.accessTokenExpiredAt,
+    refreshTokenExpiredAt: tokens.refreshTokenExpiredAt,
+  };
+};
 exports.login = login;
 exports.refreshToken = refreshToken;
 exports.createUser = createUser;
