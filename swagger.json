@@ -179,9 +179,14 @@
           "type": "string",
           "uniqueItems": true
         },
-        "email": {
-          "type": "string",
-          "uniqueItems": true
+        "firstName": {
+          "type": "string"
+        },
+        "middleName": {
+          "type": "string"
+        },
+        "surName": {
+          "type": "string"
         },
         "password": {
           "type": "string"

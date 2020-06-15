@@ -1,25 +1,25 @@
-const { validationResult } = require('express-validator');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const { validationResult } = require("express-validator");
+const jwt = require("jsonwebtoken");
 
-const HttpError = require('../utils/http-error');
-const User = require('../models/user-model');
+const HttpError = require("../utils/http-error");
+const User = require("../models/user-model");
 
 const createUser = async (req, res, next) => {
   const errors = validationResult(req);
-
+  // Return Error if inputs are not valid
   if (!errors.isEmpty()) {
-    return next(new HttpError('Invalid inputs passed, check your data', 422));
+    return next(new HttpError("Invalid inputs passed, check your data", 422));
   }
-
+  // Get inputs from request body
   const {
     username,
-    surName = '',
-    firstName = '',
-    middleName = '',
+    surName = "",
+    firstName = "",
+    middleName = "",
     password,
   } = req.body;
 
+  // Check if user is already exists
   let existingUser;
 
   try {
@@ -30,23 +30,16 @@ const createUser = async (req, res, next) => {
 
   if (existingUser) {
     return next(
-      new HttpError('User is already exists, please change username', 422)
+      new HttpError("User is already exists, please change username", 422)
     );
   }
-
-  let hashedPassword;
-  try {
-    hashedPassword = await bcrypt.hash(password, 12);
-  } catch (err) {
-    return next(new HttpError("Couldn't create a user, please try again", 500));
-  }
-
+  // Create new user object
   const createdUser = new User({
     username,
     firstName,
     surName,
     middleName,
-    password: hashedPassword,
+    password,
     permission: {
       chat: { C: true, R: true, U: true, D: true },
       news: { C: true, R: true, U: true, D: true },
@@ -54,28 +47,34 @@ const createUser = async (req, res, next) => {
     },
   });
 
-  let savedUser;
-
+  // Save user in db
   try {
-    savedUser = await createdUser.save();
+    await createdUser.save();
   } catch (err) {
-    return next(new HttpError('Creating user failed, please try again', 500));
+    return next(new HttpError("Creating user failed, please try again", 500));
   }
 
+  // Set access token for this user
   let token;
+  const expireAt = Math.floor(Date.now()) + 60 * 1000;
   try {
     token = jwt.sign(
-      { userId: createdUser.id, username: createdUser.username },
-      process.env.SECRET,
-      { expiresIn: '1h' }
+      {
+        userId: createdUser.id,
+        exp: expireAt / 1000,
+      },
+      process.env.SECRET
     );
   } catch (err) {
-    return next(new HttpError('Signing up failed, please try again', 500));
+    return next(new HttpError("Signing up failed, please try again", 500));
   }
 
+  // Send user's object to the client
   res.status(201).json({
     id: createdUser.id,
     accessToken: token,
+    accessTokenExpiredAt: expireAt,
+    username: createdUser.username,
     firstName: createdUser.firstName,
     surName: createdUser.surName,
     middleName: createdUser.middleName,
@@ -84,38 +83,38 @@ const createUser = async (req, res, next) => {
 };
 
 const getUser = async (req, res, next) => {
-  res.send('User object');
+  res.send("User object");
 };
 
 const updateUser = async (req, res, next) => {
-  res.send('User updated');
+  res.send("User updated");
 };
 
 const deleteUser = async (req, res, next) => {
-  res.send('User deleted');
+  res.send("User deleted");
 };
 
 const getAllUsers = async (req, res, next) => {
   let users;
   try {
-    users = await User.find({}, '-password');
+    users = await User.find({}, "-password");
   } catch (err) {
-    return next(new HttpError('Fetching users failed', 500));
+    return next(new HttpError("Fetching users failed", 500));
   }
 
   res.json({ users: users.map((u) => u.toObject({ getters: true })) });
 };
 
 const updatePermission = async (req, res, next) => {
-  res.send('Permissions updated');
+  res.send("Permissions updated");
 };
 
 const login = async (req, res, next) => {
-  res.send('User signed in');
+  res.send("User signed in");
 };
 
 const refreshToken = async (req, res, next) => {
-  res.send('Token refreshed');
+  res.send("Token refreshed");
 };
 
 exports.login = login;
