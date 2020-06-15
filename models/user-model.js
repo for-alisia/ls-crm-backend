@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 const uniqueValidator = require("mongoose-unique-validator");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const randToken = require("rand-token");
 
 const Schema = mongoose.Schema;
 
@@ -17,10 +16,6 @@ const userSchema = new Schema({
     {
       token: {
         type: String,
-        required: true,
-      },
-      expireAt: {
-        type: Number,
         required: true,
       },
     },
@@ -68,29 +63,41 @@ userSchema.statics.findByCredentials = async function (username, password) {
   return user;
 };
 
-userSchema.methods.generateAuthToken = async function () {
+userSchema.methods.generateAuthToken = async function (createRefresh) {
   const user = this;
-  const accessTokenExpiredAt = Math.floor(Date.now()) + 60 * 1000;
-  const refreshTokenExpiredAt = Math.floor(Date.now()) + 60 * 60 * 1000;
-  const accessToken = jwt.sign(
-    { id: user._id.toString(), exp: accessTokenExpiredAt / 1000 },
+  const tokens = {};
+
+  tokens.accessTokenExpiredAt = Math.floor(Date.now()) + 60 * 1000;
+
+  tokens.accessToken = jwt.sign(
+    { id: user._id.toString(), exp: tokens.accessTokenExpiredAt / 1000 },
     process.env.SECRET
   );
-  const refreshToken = randToken.uid(256);
 
-  user.tokens = user.tokens.concat({
-    token: refreshToken,
-    expireAt: refreshTokenExpiredAt,
-  });
+  if (createRefresh) {
+    tokens.refreshTokenExpiredAt = Math.floor(Date.now()) + 60 * 60 * 1000;
+    tokens.refreshToken = jwt.sign(
+      { id: user._id.toString(), exp: tokens.refreshTokenExpiredAt / 1000 },
+      process.env.SECRET
+    );
 
-  await user.save();
+    user.tokens = user.tokens.filter((token) => {
+      return jwt.verify(token, process.env.SECRET, (err, decoded) => {
+        if (err) {
+          return false;
+        }
+        return true;
+      });
+    });
 
-  return {
-    accessToken,
-    refreshToken,
-    accessTokenExpiredAt,
-    refreshTokenExpiredAt,
-  };
+    user.tokens = user.tokens.concat({
+      token: tokens.refreshToken,
+    });
+
+    await user.save();
+  }
+
+  return tokens;
 };
 
 // Hashed password before saving

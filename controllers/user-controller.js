@@ -49,7 +49,8 @@ const createUser = async (req, res, next) => {
   });
 
   try {
-    const tokens = await createdUser.generateAuthToken();
+    const createRefresh = true;
+    const tokens = await createdUser.generateAuthToken(createRefresh);
 
     res.send(generateResponseUser(createdUser, tokens));
   } catch (err) {
@@ -88,8 +89,9 @@ const updatePermission = async (req, res, next) => {
 const login = async (req, res, next) => {
   const { username, password } = req.body;
   try {
+    const createRefresh = true;
     const user = await User.findByCredentials(username, password);
-    const tokens = await user.generateAuthToken();
+    const tokens = await user.generateAuthToken(createRefresh);
 
     res.send(generateResponseUser(user, tokens));
   } catch (err) {
@@ -97,8 +99,31 @@ const login = async (req, res, next) => {
   }
 };
 
+// REFRESH TOKEN
 const refreshToken = async (req, res, next) => {
-  res.send("Token refreshed");
+  try {
+    const token = req.headers.authorization;
+
+    if (!token) {
+      throw new Error();
+    }
+
+    const decodedToken = jwt.verify(token, process.env.SECRET);
+    const user = await User.findOne({
+      _id: decodedToken.id,
+      "tokens.token": token,
+    });
+    const createRefresh = false;
+    const tokens = await user.generateAuthToken(createRefresh);
+
+    res.send({
+      ...tokens,
+      refreshToken: token,
+      refreshTokenExpiredAt: decodedToken.exp * 1000,
+    });
+  } catch (err) {
+    return next(new HttpError("Authentication failed", 403));
+  }
 };
 
 const generateResponseUser = (user, tokens) => {
@@ -115,6 +140,7 @@ const generateResponseUser = (user, tokens) => {
     refreshTokenExpiredAt: tokens.refreshTokenExpiredAt,
   };
 };
+
 exports.login = login;
 exports.refreshToken = refreshToken;
 exports.createUser = createUser;
