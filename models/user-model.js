@@ -68,29 +68,6 @@ userSchema.statics.findByCredentials = async function (username, password) {
   return user;
 };
 
-// userSchema.methods.generateAuthToken = async function () {
-//   const user = this;
-//   const accessTokenExpiredAt = Math.float(new Date()) + 60 * 1000;
-//   const refreshTokenExpiredAt = Math.float(new Date()) + 60 * 60 * 1000;
-//   console.log(accessTokenExpiredAt, refreshTokenExpiredAt);
-//   const accessToken = jwt.sign({ id: user._id.toString() }, process.env.SECRET);
-
-//   const refreshToken = randToken.uid(256);
-
-//   user.tokens = user.tokens.concat({
-//     token: accessToken,
-//     expireAt: refreshTokenExpiredAt,
-//   });
-//   await user.save();
-
-//   return {
-//     accessToken,
-//     refreshToken,
-//     accessTokenExpiredAt,
-//     refreshTokenExpiredAt,
-//   };
-// };
-
 userSchema.methods.generateAuthToken = async function () {
   const user = this;
   const accessTokenExpiredAt = Math.floor(Date.now()) + 60 * 1000;
