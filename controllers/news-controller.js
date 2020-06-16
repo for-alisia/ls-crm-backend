@@ -5,7 +5,16 @@ const News = require("../models/news-model");
 const User = require("../models/user-model");
 
 const getNews = async (req, res, next) => {
-  res.send("News got");
+  try {
+    const newsList = await News.find({});
+    const responseList = await generateResponseList(newsList);
+
+    res.send(responseList);
+  } catch (err) {
+    return next(
+      new HttpError("Couldn't retrieve news list from database", 500)
+    );
+  }
 };
 const createNews = async (req, res, next) => {
   const errors = validationResult(req);
@@ -39,11 +48,12 @@ const createNews = async (req, res, next) => {
   try {
     await news.save();
 
-    const newsResponse = await generateResponseNews(news);
+    const newsList = await News.find({});
+    const responseList = await generateResponseList(newsList);
 
-    res.send(newsResponse);
+    res.send(responseList);
   } catch (err) {
-    return next(new HttpError("Creation failed, please try again", 500));
+    return next(new HttpError("Interval error", 500));
   }
 };
 const updateNews = async (req, res, next) => {
@@ -68,6 +78,10 @@ const generateResponseNews = async (news) => {
   } catch (err) {
     throw new Error("Could't find a user");
   }
+};
+
+const generateResponseList = async (list) => {
+  return Promise.all(list.map((item) => generateResponseNews(item)));
 };
 
 exports.getNews = getNews;
