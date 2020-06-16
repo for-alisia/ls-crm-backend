@@ -49,17 +49,22 @@ const createUser = async (req, res, next) => {
   });
 
   try {
-    const createRefresh = true;
-    const tokens = await createdUser.generateAuthToken(createRefresh);
+    await createdUser.save();
 
-    res.send(generateResponseUser(createdUser, tokens));
+    res.send({ username, firstName, surName, middleName });
   } catch (err) {
     return next(new HttpError("Creating user failed, please try again", 500));
   }
 };
 
 const getUser = async (req, res, next) => {
-  res.send("User object");
+  const { id } = res.locals.userData;
+  try {
+    const user = await User.findOne({ _id: id }, "-tokens -password");
+    res.send(user);
+  } catch (err) {
+    return next(new HttpError("Couldn't find user with provided ID", 403));
+  }
 };
 
 const updateUser = async (req, res, next) => {
@@ -89,11 +94,11 @@ const updatePermission = async (req, res, next) => {
 const login = async (req, res, next) => {
   const { username, password } = req.body;
   try {
-    const createRefresh = true;
     const user = await User.findByCredentials(username, password);
-    const tokens = await user.generateAuthToken(createRefresh);
+    const accessToken = await user.generateAccessToken();
+    const refreshToken = await user.generateRefreshToken();
 
-    res.send(generateResponseUser(user, tokens));
+    res.send(generateResponseUser(user, { ...accessToken, ...refreshToken }));
   } catch (err) {
     return next(new HttpError("Invalid credentials provided", 403));
   }
@@ -113,8 +118,7 @@ const refreshToken = async (req, res, next) => {
       _id: decodedToken.id,
       "tokens.token": token,
     });
-    const createRefresh = false;
-    const tokens = await user.generateAuthToken(createRefresh);
+    const tokens = await user.generateAccessToken();
 
     res.send({
       ...tokens,
@@ -126,6 +130,7 @@ const refreshToken = async (req, res, next) => {
   }
 };
 
+// Configure response object
 const generateResponseUser = (user, tokens) => {
   return {
     id: user.id,

@@ -49,53 +49,58 @@ userSchema.statics.findByCredentials = async function (username, password) {
   const user = await this.findOne({ username });
 
   if (!user) {
-    console.log("User not exists");
     throw new Error("Invalid");
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
 
   if (!isMatch) {
-    console.log("Password invalid");
     throw new Error("Invalid");
   }
 
   return user;
 };
 
-userSchema.methods.generateAuthToken = async function (createRefresh) {
+// Generate Access Token
+userSchema.methods.generateAccessToken = async function () {
   const user = this;
   const tokens = {};
 
-  tokens.accessTokenExpiredAt = Math.floor(Date.now()) + 60 * 1000;
+  tokens.accessTokenExpiredAt = Math.floor(Date.now()) + 60 * 60 * 1000;
 
   tokens.accessToken = jwt.sign(
     { id: user._id.toString(), exp: tokens.accessTokenExpiredAt / 1000 },
     process.env.SECRET
   );
 
-  if (createRefresh) {
-    tokens.refreshTokenExpiredAt = Math.floor(Date.now()) + 60 * 60 * 1000;
-    tokens.refreshToken = jwt.sign(
-      { id: user._id.toString(), exp: tokens.refreshTokenExpiredAt / 1000 },
-      process.env.SECRET
-    );
+  return tokens;
+};
 
-    user.tokens = user.tokens.filter((token) => {
-      return jwt.verify(token, process.env.SECRET, (err, decoded) => {
-        if (err) {
-          return false;
-        }
-        return true;
-      });
+// Generate Refresh Token
+userSchema.methods.generateRefreshToken = async function () {
+  const user = this;
+  const tokens = {};
+
+  tokens.refreshTokenExpiredAt = Math.floor(Date.now()) + 60 * 60 * 24 * 1000;
+  tokens.refreshToken = jwt.sign(
+    { id: user._id.toString(), exp: tokens.refreshTokenExpiredAt / 1000 },
+    process.env.SECRET
+  );
+
+  user.tokens = user.tokens.filter((token) => {
+    return jwt.verify(token, process.env.SECRET, (err, decoded) => {
+      if (err) {
+        return false;
+      }
+      return true;
     });
+  });
 
-    user.tokens = user.tokens.concat({
-      token: tokens.refreshToken,
-    });
+  user.tokens = user.tokens.concat({
+    token: tokens.refreshToken,
+  });
 
-    await user.save();
-  }
+  await user.save();
 
   return tokens;
 };
