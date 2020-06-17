@@ -120,7 +120,7 @@ const updateUser = async (req, res, next) => {
 
   res.send(user);
 };
-// TODO delete user
+
 // DELETE USER (return ?)
 const deleteUser = async (req, res, next) => {
   const { id: deletedUserId } = req.params;
@@ -131,23 +131,29 @@ const deleteUser = async (req, res, next) => {
   };
   let userToDelete, user;
   try {
-    user = await User.findById(id);
     userToDelete = await User.findById(deletedUserId);
   } catch (err) {
     console.log(err);
     return next(new HttpError("Interval error", 500));
+  }
+  if (!userToDelete) {
+    return next(new HttpError("Can't find a user with provided ID", 404));
   }
   try {
     const validateUser = await User.checkProvidedUser(id, permissionType);
     if (validateUser.result === "Error") {
       return next(new HttpError(validateUser.msg, validateUser.status));
     }
+    user = validateUser.user;
   } catch (err) {
     console.log(err);
     return next(new HttpError("Can't check user", 500));
   }
-  if (!userToDelete) {
-    return next(new HttpError("Can't find a user with provided ID", 404));
+
+  if (userToDelete.image) {
+    fs.unlink(userToDelete.image, (err) => {
+      console.log(err);
+    });
   }
   try {
     await userToDelete.remove();
@@ -167,10 +173,59 @@ const getAllUsers = async (req, res, next) => {
   }
   res.send(users.map((u) => u.toObject({ getters: true })));
 };
-// TODO update permission
+
 // UPDATE PERMISSION (return ?)
 const updatePermission = async (req, res, next) => {
-  res.send("Permissions updated");
+  const { id } = res.locals.userData;
+  const { id: updatedUserId } = req.params;
+  const { permission } = req.body;
+  const permissionType = {
+    type: "settings",
+    operation: "U",
+  };
+  let user, updatedUser;
+
+  try {
+    const validateUser = await User.checkProvidedUser(id, permissionType);
+
+    if (validateUser.result === "Error") {
+      return next(new HttpError(validateUser.msg, validateUser.status));
+    }
+
+    user = validateUser.user;
+  } catch (err) {
+    console.log(err);
+    return next(new HttpError("Can't check user", 500));
+  }
+
+  try {
+    updatedUser = await User.findOne(
+      { _id: updatedUserId },
+      "-tokens -password"
+    );
+  } catch (err) {
+    console.log(err);
+    return next(new HttpError("Interval error (find updated user)", 500));
+  }
+
+  if (!updatedUser) {
+    return next(
+      new HttpError("Can't find user with provided ID to update", 404)
+    );
+  }
+
+  updatedUser.permission = permission;
+
+  try {
+    await updatedUser.save();
+  } catch (err) {
+    console.log(err);
+    return next(
+      new HttpError("Can't update permissions, please, try again", 500)
+    );
+  }
+
+  res.send(updatedUser);
 };
 
 // LOGIN (return user obj with tokens)
