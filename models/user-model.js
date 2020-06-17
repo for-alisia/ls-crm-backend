@@ -46,19 +46,76 @@ userSchema.plugin(uniqueValidator);
 
 // Check the credentials
 userSchema.statics.findByCredentials = async function (username, password) {
-  const user = await this.findOne({ username });
+  let user, isMatch;
+
+  try {
+    user = await this.findOne({ username });
+  } catch (err) {
+    console.log(err);
+    return { result: "Error", msg: "Interval error (username)", status: 500 };
+  }
 
   if (!user) {
-    throw new Error("Invalid");
+    return {
+      result: "Error",
+      msg: "Invalid credentials (username)",
+      status: 403,
+    };
   }
 
-  const isMatch = await bcrypt.compare(password, user.password);
+  try {
+    isMatch = await bcrypt.compare(password, user.password);
+  } catch (err) {
+    console.log(err);
+    return {
+      result: "Error",
+      msg: "Interval error (password)",
+      status: 500,
+    };
+  }
 
   if (!isMatch) {
-    throw new Error("Invalid");
+    return {
+      result: "Error",
+      msg: "Invalid credentials (password)",
+      status: 403,
+    };
   }
 
-  return user;
+  return { result: "Success", user };
+};
+
+// Check user's permissions
+userSchema.statics.checkProvidedUser = async function (userId, permissionType) {
+  let user;
+  try {
+    user = await this.findById(userId);
+  } catch (err) {
+    console.log(err);
+    return {
+      result: "Error",
+      msg: "Can't retrieve a user from database",
+      status: 500,
+    };
+  }
+
+  if (!user) {
+    return {
+      result: "Error",
+      msg: "Can't find a user with provided id",
+      status: 404,
+    };
+  }
+
+  if (!user.permission.news[permissionType]) {
+    return {
+      result: "Error",
+      msg: "You are not allowed to do this",
+      status: 403,
+    };
+  }
+
+  return { result: "Success", user };
 };
 
 // Generate Access Token
@@ -87,14 +144,14 @@ userSchema.methods.generateRefreshToken = async function () {
     process.env.SECRET
   );
 
-  user.tokens = user.tokens.filter((token) => {
-    return jwt.verify(token, process.env.SECRET, (err, decoded) => {
-      if (err) {
-        return false;
-      }
-      return true;
-    });
-  });
+  // user.tokens = user.tokens.filter((token) => {
+  //   return jwt.verify(token, process.env.SECRET, (err, decoded) => {
+  //     if (err) {
+  //       return false;
+  //     }
+  //     return true;
+  //   });
+  // });
 
   user.tokens = user.tokens.concat({
     token: tokens.refreshToken,

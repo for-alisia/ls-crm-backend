@@ -4,6 +4,7 @@ const HttpError = require("../utils/http-error");
 const News = require("../models/news-model");
 const User = require("../models/user-model");
 
+// GET ALL NEWS (return news list)
 const getNews = async (req, res, next) => {
   try {
     const newsList = await News.find({});
@@ -11,11 +12,12 @@ const getNews = async (req, res, next) => {
 
     res.send(responseList);
   } catch (err) {
-    return next(
-      new HttpError("Couldn't retrieve news list from database", 500)
-    );
+    console.log(err);
+    return next(new HttpError("Can't retrieve news list from database", 500));
   }
 };
+
+// CREATE NEWS (return updated news list)
 const createNews = async (req, res, next) => {
   const errors = validationResult(req);
 
@@ -26,24 +28,22 @@ const createNews = async (req, res, next) => {
   const { text, title } = req.body;
   const { id } = res.locals.userData;
 
+  try {
+    const validateUser = await User.checkProvidedUser(id, "C");
+
+    if (validateUser.result === "Error") {
+      return next(new HttpError(validateUser.msg, validateUser.status));
+    }
+  } catch (err) {
+    console.log(err);
+    return next(new HttpError("Can't check user", 500));
+  }
+
   const news = new News({
     title,
     text,
     user: id,
   });
-
-  let user;
-  try {
-    user = await User.findById(id);
-  } catch (err) {
-    return next(new HttpError("Connection failed", 500));
-  }
-
-  if (!user) {
-    return next(
-      new HttpError("We can not find a user with the provided ID", 404)
-    );
-  }
 
   try {
     await news.save();
@@ -53,18 +53,88 @@ const createNews = async (req, res, next) => {
 
     res.send(responseList);
   } catch (err) {
-    return next(new HttpError("Interval error", 500));
+    console.log(err);
+    return next(new HttpError("Can't create news", 500));
   }
 };
+
+// UPDATE NEWS (return updated news list)
 const updateNews = async (req, res, next) => {
-  res.send("News updated");
+  const { id: newsId } = req.params;
+  const { id: userId } = res.locals.userData;
+  const { text, title } = req.body;
+  let news;
+
+  try {
+    const validateUser = await User.checkProvidedUser(userId, "U");
+
+    if (validateUser.result === "Error") {
+      return next(new HttpError(validateUser.msg, validateUser.status));
+    }
+  } catch (err) {
+    console.log(err);
+    return next(new HttpError("Can't check user", 500));
+  }
+
+  try {
+    news = await News.findById(newsId);
+    news.title = title;
+    news.text = text;
+    await news.save();
+  } catch (err) {
+    console.log(err);
+    return next(new HttpError("Can't update news, please try again", 500));
+  }
+
+  try {
+    const newsList = await News.find({});
+    const responseList = await generateResponseList(newsList);
+
+    res.send(responseList);
+  } catch (err) {
+    console.log(err);
+    return next(new HttpError("Can't return news, please try again", 500));
+  }
 };
+
+// DELETE NEWS (return updated news list)
 const deleteNews = async (req, res, next) => {
-  res.send("News deleted");
+  const { id: newsId } = req.params;
+  const { id: userId } = res.locals.userData;
+  let news;
+
+  try {
+    const validateUser = await User.checkProvidedUser(userId, "D");
+
+    if (validateUser.result === "Error") {
+      return next(new HttpError(validateUser.msg, validateUser.status));
+    }
+  } catch (err) {
+    console.log(err);
+    return next(new HttpError("Can't check user", 500));
+  }
+
+  try {
+    news = await News.findById(newsId);
+    await news.remove();
+  } catch (err) {
+    console.log(err);
+    return next(new HttpError("Can't delete news, please try again", 500));
+  }
+
+  try {
+    const newsList = await News.find({});
+    const responseList = await generateResponseList(newsList);
+
+    res.send(responseList);
+  } catch (err) {
+    console.log(err);
+    return next(new HttpError("Can't return news, please try again", 500));
+  }
 };
 
 // Configure response object
-const generateResponseNews = async (news) => {
+async function generateResponseNews(news) {
   try {
     const user = await User.findOne({ _id: news.user }, "-password -tokens");
 
@@ -76,13 +146,13 @@ const generateResponseNews = async (news) => {
       user,
     };
   } catch (err) {
-    throw new Error("Could't find a user");
+    throw new Error("Can't find a user");
   }
-};
-
-const generateResponseList = async (list) => {
+}
+// Configure response list
+async function generateResponseList(list) {
   return Promise.all(list.map((item) => generateResponseNews(item)));
-};
+}
 
 exports.getNews = getNews;
 exports.createNews = createNews;
