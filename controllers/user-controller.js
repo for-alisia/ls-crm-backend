@@ -1,5 +1,6 @@
 const { validationResult } = require("express-validator");
 const jwt = require("jsonwebtoken");
+const fs = require("fs");
 
 const HttpError = require("../utils/http-error");
 const User = require("../models/user-model");
@@ -67,15 +68,93 @@ const getUser = async (req, res, next) => {
     return next(new HttpError("Couldn't find user with provided ID", 403));
   }
 };
-// TODO update profile
+
 // UPDATE PROFILE INFO (return updated user's profile)
 const updateUser = async (req, res, next) => {
-  res.send("User updated");
+  const { id } = res.locals.userData;
+  const { firstName, middleName, surName, oldPassword, newPassword } = req.body;
+  const image = req.file ? req.file.path : null;
+  let user;
+
+  try {
+    user = await User.findOne({ _id: id }, "-tokens");
+  } catch (err) {
+    console.log(err);
+    return next(new HttpError("Can't get user from db", 500));
+  }
+
+  if (!user) {
+    return next(new HttpError("Can't find user with provided ID", 404));
+  }
+
+  if (newPassword) {
+    isValidPassword = await user.checkPassword(oldPassword);
+
+    if (isValidPassword.result === "Error") {
+      return next(new HttpError(isValidPassword.msg, isValidPassword.status));
+    }
+
+    if (!isValidPassword) {
+      return next(
+        new HttpError("Invalid password, check your credentials, please", 403)
+      );
+    }
+
+    user.password = newPassword;
+  }
+
+  if (image && user.image) {
+    fs.unlink(user.image, () => {});
+  }
+  user.image = image || user.image;
+  user.firstName = firstName || user.firstName;
+  user.middleName = middleName || user.middleName;
+  user.surName = surName || user.surName;
+
+  try {
+    await user.save();
+  } catch (err) {
+    console.log(err);
+    return next(new HttpError("Can't save changes", 500));
+  }
+
+  res.send(user);
 };
 // TODO delete user
 // DELETE USER (return ?)
 const deleteUser = async (req, res, next) => {
-  res.send("User deleted");
+  const { id: deletedUserId } = req.params;
+  const { id } = res.locals.userData;
+  const permissionType = {
+    type: "settings",
+    operation: "D",
+  };
+  let userToDelete, user;
+  try {
+    user = await User.findById(id);
+    userToDelete = await User.findById(deletedUserId);
+  } catch (err) {
+    console.log(err);
+    return next(new HttpError("Interval error", 500));
+  }
+  try {
+    const validateUser = await User.checkProvidedUser(id, permissionType);
+    if (validateUser.result === "Error") {
+      return next(new HttpError(validateUser.msg, validateUser.status));
+    }
+  } catch (err) {
+    console.log(err);
+    return next(new HttpError("Can't check user", 500));
+  }
+  if (!userToDelete) {
+    return next(new HttpError("Can't find a user with provided ID", 404));
+  }
+  try {
+    await userToDelete.remove();
+  } catch (err) {
+    return next(new HttpError("Can't delete, please, try again", 500));
+  }
+  res.send("OK");
 };
 
 // GET LIST OF ALL USERS (return user's list for authenticated users)
@@ -86,8 +165,7 @@ const getAllUsers = async (req, res, next) => {
   } catch (err) {
     return next(new HttpError("Fetching users failed", 500));
   }
-  //res.send(users.map((u) => u.toObject({ getters: true })));
-  res.send(users);
+  res.send(users.map((u) => u.toObject({ getters: true })));
 };
 // TODO update permission
 // UPDATE PERMISSION (return ?)

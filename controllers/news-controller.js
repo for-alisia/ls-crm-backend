@@ -28,8 +28,13 @@ const createNews = async (req, res, next) => {
   const { text, title } = req.body;
   const { id } = res.locals.userData;
 
+  const permissionType = {
+    type: "news",
+    operation: "C",
+  };
+
   try {
-    const validateUser = await User.checkProvidedUser(id, "C");
+    const validateUser = await User.checkProvidedUser(id, permissionType);
 
     if (validateUser.result === "Error") {
       return next(new HttpError(validateUser.msg, validateUser.status));
@@ -63,10 +68,14 @@ const updateNews = async (req, res, next) => {
   const { id: newsId } = req.params;
   const { id: userId } = res.locals.userData;
   const { text, title } = req.body;
+  const permissionType = {
+    type: "news",
+    operation: "U",
+  };
   let news;
 
   try {
-    const validateUser = await User.checkProvidedUser(userId, "U");
+    const validateUser = await User.checkProvidedUser(userId, permissionType);
 
     if (validateUser.result === "Error") {
       return next(new HttpError(validateUser.msg, validateUser.status));
@@ -101,10 +110,14 @@ const updateNews = async (req, res, next) => {
 const deleteNews = async (req, res, next) => {
   const { id: newsId } = req.params;
   const { id: userId } = res.locals.userData;
+  const permissionType = {
+    type: "news",
+    operation: "D",
+  };
   let news;
 
   try {
-    const validateUser = await User.checkProvidedUser(userId, "D");
+    const validateUser = await User.checkProvidedUser(userId, permissionType);
 
     if (validateUser.result === "Error") {
       return next(new HttpError(validateUser.msg, validateUser.status));

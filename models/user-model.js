@@ -44,7 +44,7 @@ const userSchema = new Schema({
 
 userSchema.plugin(uniqueValidator);
 
-// Check the credentials
+// Find user by username and password
 userSchema.statics.findByCredentials = async function (username, password) {
   let user, isMatch;
 
@@ -87,6 +87,7 @@ userSchema.statics.findByCredentials = async function (username, password) {
 
 // Check user's permissions
 userSchema.statics.checkProvidedUser = async function (userId, permissionType) {
+  const { type, operation } = permissionType;
   let user;
   try {
     user = await this.findById(userId);
@@ -107,7 +108,7 @@ userSchema.statics.checkProvidedUser = async function (userId, permissionType) {
     };
   }
 
-  if (!user.permission.news[permissionType]) {
+  if (!user.permission[type][operation]) {
     return {
       result: "Error",
       msg: "You are not allowed to do this",
@@ -160,6 +161,25 @@ userSchema.methods.generateRefreshToken = async function () {
   await user.save();
 
   return tokens;
+};
+
+// Check if password is valid
+userSchema.methods.checkPassword = async function (password) {
+  const user = this;
+  let isMatch;
+
+  try {
+    isMatch = await bcrypt.compare(password, user.password);
+  } catch (err) {
+    console.log(err);
+    return {
+      result: "Error",
+      msg: "Interval error (password)",
+      status: 500,
+    };
+  }
+
+  return isMatch;
 };
 
 // Hashed password before saving
