@@ -1,9 +1,11 @@
 const path = require("path");
 const fs = require("fs");
+const http = require("http");
 
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
+const socketio = require("socket.io");
 
 const HttpError = require("./utils/http-error");
 const { MONGO_URL, MONGOOSE_CONF } = require("./config");
@@ -11,8 +13,11 @@ const { MONGO_URL, MONGOOSE_CONF } = require("./config");
 const corsHeaders = require("./middlewares/cors-headers");
 const userRoutes = require("./api/v1.0/user-routes");
 const newsRoutes = require("./api/v1.0/news-routes");
+const socketRun = require("./chat");
 
 const app = express();
+const server = http.createServer(app);
+const io = socketio(server);
 
 app.use(bodyParser.json());
 
@@ -42,11 +47,13 @@ app.use((error, req, res, next) => {
   });
 });
 
+socketRun(io);
+
 mongoose
   .connect(MONGO_URL, MONGOOSE_CONF)
   .then(() => {
     console.log("Successfull connection");
-    app.listen(process.env.PORT || 8000, function () {
+    server.listen(process.env.PORT || 8000, function () {
       console.log(`Server is listening on: ${process.env.PORT || "8000"}`);
     });
   })

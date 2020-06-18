@@ -1,9 +1,12 @@
 const { validationResult } = require("express-validator");
 const jwt = require("jsonwebtoken");
 const fs = require("fs");
+const sharp = require("sharp");
+const path = require("path");
 
 const HttpError = require("../utils/http-error");
 const User = require("../models/user-model");
+const News = require("../models/news-model");
 
 // CREATION (return user object without authorization)
 const createUser = async (req, res, next) => {
@@ -48,7 +51,7 @@ const createUser = async (req, res, next) => {
       settings: { C: true, R: true, U: true, D: true },
     },
   });
-
+  // Save new user in DB
   try {
     await createdUser.save();
 
@@ -73,9 +76,9 @@ const getUser = async (req, res, next) => {
 const updateUser = async (req, res, next) => {
   const { id } = res.locals.userData;
   const { firstName, middleName, surName, oldPassword, newPassword } = req.body;
-  const image = req.file ? req.file.path : null;
+  let image = req.file ? req.file.path : null;
   let user;
-
+  // Check if the user exists
   try {
     user = await User.findOne({ _id: id }, "-tokens");
   } catch (err) {
@@ -86,7 +89,7 @@ const updateUser = async (req, res, next) => {
   if (!user) {
     return next(new HttpError("Can't find user with provided ID", 404));
   }
-
+  // If user wants to change password, check if the old password is valid
   if (newPassword) {
     isValidPassword = await user.checkPassword(oldPassword);
 
@@ -99,18 +102,30 @@ const updateUser = async (req, res, next) => {
         new HttpError("Invalid password, check your credentials, please", 403)
       );
     }
-
     user.password = newPassword;
   }
-
-  if (image && user.image) {
-    fs.unlink(user.image, () => {});
+  // If user wants to change avatar, resize it, save, delete the old one
+  if (image) {
+    const newImage = path.join("uploads", "images", req.file.filename);
+    sharp(image)
+      .resize(450, 450)
+      .toFile(newImage, (err) => {
+        if (err) {
+          console.log(err);
+        } else {
+          fs.unlink(image, () => {});
+          if (user.image) {
+            fs.unlink(user.image, () => {});
+          }
+          user.image = newImage;
+        }
+      });
   }
-  user.image = image || user.image;
+  // Save other fields
   user.firstName = firstName || user.firstName;
   user.middleName = middleName || user.middleName;
   user.surName = surName || user.surName;
-
+  // Save all changes in DB
   try {
     await user.save();
   } catch (err) {
@@ -129,7 +144,8 @@ const deleteUser = async (req, res, next) => {
     type: "settings",
     operation: "D",
   };
-  let userToDelete, user;
+  let userToDelete, user, news;
+  // Check if the deleted user exists and user is allowed to delete users
   try {
     userToDelete = await User.findById(deletedUserId);
   } catch (err) {
@@ -149,12 +165,21 @@ const deleteUser = async (req, res, next) => {
     console.log(err);
     return next(new HttpError("Can't check user", 500));
   }
-
+  // Remove all news, created by the deleted user
+  try {
+    news = await News.find({ user: deletedUserId });
+    news.forEach((item) => item.remove());
+  } catch (err) {
+    console.log(err);
+    return next(new HttpError("Can't delete user's news", 500));
+  }
+  // Remove avatar of the deleted user
   if (userToDelete.image) {
     fs.unlink(userToDelete.image, (err) => {
       console.log(err);
     });
   }
+  // Remove user
   try {
     await userToDelete.remove();
   } catch (err) {
@@ -184,7 +209,7 @@ const updatePermission = async (req, res, next) => {
     operation: "U",
   };
   let user, updatedUser;
-
+  // Check if user exists and he has a permission to do this
   try {
     const validateUser = await User.checkProvidedUser(id, permissionType);
 
@@ -197,7 +222,7 @@ const updatePermission = async (req, res, next) => {
     console.log(err);
     return next(new HttpError("Can't check user", 500));
   }
-
+  // Find an updated user
   try {
     updatedUser = await User.findOne(
       { _id: updatedUserId },
@@ -215,7 +240,7 @@ const updatePermission = async (req, res, next) => {
   }
 
   updatedUser.permission = permission;
-
+  // Save updated user in DB
   try {
     await updatedUser.save();
   } catch (err) {
@@ -232,6 +257,7 @@ const updatePermission = async (req, res, next) => {
 const login = async (req, res, next) => {
   const { username, password } = req.body;
   let user, accessToken, refreshToken;
+  // Validate user by username and password
   try {
     const validateUser = await User.findByCredentials(username, password);
 
@@ -243,7 +269,7 @@ const login = async (req, res, next) => {
     console.log(err);
     return next(new HttpError("Interval error (check user credentials)", 500));
   }
-
+  // Get tokens for this user
   try {
     accessToken = await user.generateAccessToken();
     refreshToken = await user.generateRefreshToken();
@@ -263,13 +289,13 @@ const refreshToken = async (req, res, next) => {
   if (!token) {
     return next(new HttpError("Can't get access to refresh token", 500));
   }
-
+  // Decode provided token
   try {
     decodedToken = jwt.verify(token, process.env.SECRET);
   } catch (err) {
     return next(new HttpError("Invalid refresh token", 500));
   }
-
+  // Find user in DB via id and provided token
   try {
     user = await User.findOne({
       _id: decodedToken.id,
@@ -278,7 +304,7 @@ const refreshToken = async (req, res, next) => {
   } catch (err) {
     return next(new HttpError("Couldn't find a user", 403));
   }
-
+  // Generate new access token
   try {
     tokens = await user.generateAccessToken();
   } catch (err) {
@@ -295,11 +321,12 @@ const refreshToken = async (req, res, next) => {
 // Configure response object
 const generateResponseUser = (user, tokens) => {
   return {
-    id: user.id,
+    _id: user.id,
     username: user.username,
     firstName: user.firstName,
     middleName: user.middleName,
     surName: user.surName,
+    image: user.image,
     permission: user.permission,
     accessToken: tokens.accessToken,
     refreshToken: tokens.refreshToken,

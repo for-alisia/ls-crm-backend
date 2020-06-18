@@ -32,7 +32,7 @@ const createNews = async (req, res, next) => {
     type: "news",
     operation: "C",
   };
-
+  // Check user and his permissions
   try {
     const validateUser = await User.checkProvidedUser(id, permissionType);
 
@@ -43,13 +43,13 @@ const createNews = async (req, res, next) => {
     console.log(err);
     return next(new HttpError("Can't check user", 500));
   }
-
+  // Create news
   const news = new News({
     title,
     text,
     user: id,
   });
-
+  // Save news in DB
   try {
     await news.save();
 
@@ -73,7 +73,7 @@ const updateNews = async (req, res, next) => {
     operation: "U",
   };
   let news;
-
+  // Check user and his permissions
   try {
     const validateUser = await User.checkProvidedUser(userId, permissionType);
 
@@ -84,7 +84,7 @@ const updateNews = async (req, res, next) => {
     console.log(err);
     return next(new HttpError("Can't check user", 500));
   }
-
+  // Update news and save it
   try {
     news = await News.findById(newsId);
     news.title = title;
@@ -115,7 +115,7 @@ const deleteNews = async (req, res, next) => {
     operation: "D",
   };
   let news;
-
+  // Check user
   try {
     const validateUser = await User.checkProvidedUser(userId, permissionType);
 
@@ -126,7 +126,7 @@ const deleteNews = async (req, res, next) => {
     console.log(err);
     return next(new HttpError("Can't check user", 500));
   }
-
+  // Delete news
   try {
     news = await News.findById(newsId);
     await news.remove();
