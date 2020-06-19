@@ -1,14 +1,11 @@
 const multer = require("multer");
 const uuid = require("uuid").v4;
 
-const MIME_TYPE_MAP = {
-  "image/png": "png",
-  "image/jpeg": "jpeg",
-  "image/jpg": "jpg",
-};
+const { MIME_TYPE_MAP, IMG_LIMIT, ERR_DATA } = require("../config");
+const HttpError = require("../utils/http-error");
 
 const fileUpload = multer({
-  limits: 5000000,
+  limits: IMG_LIMIT,
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
       cb(null, "uploads/temp");
@@ -19,7 +16,7 @@ const fileUpload = multer({
     },
     fileFilter: (req, file, cb) => {
       const isValid = !!MIME_TYPE_MAP[file.mimetype];
-      let error = isValid ? null : new Error("Invalid mime type");
+      let error = isValid ? null : new HttpError(ERR_DATA.no_mime.message, ERR_DATA.no_mime.status);
       cb(error, isValid);
     },
   }),

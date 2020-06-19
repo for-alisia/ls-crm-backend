@@ -1,0 +1,12 @@
+require("dotenv").config();
+exports.DEFAULT_PORT = 8080;
+exports.MONGO_URL = require("./mongoose-conf").MONGO_URL;
+exports.MONGOOSE_CONF = require("./mongoose-conf").MONGOOSE_CONF;
+exports.ERR_DATA = require("./error-conf");
+exports.DEFAULT_PERMISSIONS = require("./auth-conf").DEFAULT_PERMISSIONS;
+exports.IN_MS = require("./auth-conf").IN_MS;
+exports.ACCESS_TOKEN_DUR = require("./auth-conf").ACCESS_TOKEN_DUR;
+exports.REFRESH_TOKEN_DUR = require("./auth-conf").REFRESH_TOKEN_DUR;
+exports.RESIZE = require("./img-conf").RESIZE;
+exports.MIME_TYPE_MAP = require("./img-conf").MIME_TYPE_MAP;
+exports.IMG_LIMIT = require("./img-conf").IMG_LIMIT;
