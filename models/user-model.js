@@ -3,7 +3,7 @@ const uniqueValidator = require("mongoose-unique-validator");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-const { ERR_DATA } = require("../config");
+const { ERR_DATA, ACCESS_TOKEN_DUR, REFRESH_TOKEN_DUR, IN_MS } = require("../config");
 
 const Schema = mongoose.Schema;
 
@@ -54,14 +54,14 @@ userSchema.statics.findByCredentials = async function (username, password) {
     user = await this.findOne({ username });
   } catch (err) {
     console.log(err);
-    return { result: false, msg: "Interval error (username)", status: 500 };
+    return { result: false, msg: ERR_DATA.interval.message, status: ERR_DATA.interval.status };
   }
 
   if (!user) {
     return {
       result: false,
-      msg: "Invalid credentials (username)",
-      status: 403,
+      msg: ERR_DATA.invalid_credentials.message,
+      status: ERR_DATA.invalid_credentials.status,
     };
   }
 
@@ -69,18 +69,14 @@ userSchema.statics.findByCredentials = async function (username, password) {
     isMatch = await bcrypt.compare(password, user.password);
   } catch (err) {
     console.log(err);
-    return {
-      result: false,
-      msg: "Interval error (password)",
-      status: 500,
-    };
+    return { result: false, msg: ERR_DATA.interval.message, status: ERR_DATA.interval.status };
   }
 
   if (!isMatch) {
     return {
       result: false,
-      msg: "Invalid credentials (password)",
-      status: 403,
+      msg: ERR_DATA.invalid_credentials.message,
+      status: ERR_DATA.invalid_credentials.status,
     };
   }
 
@@ -95,27 +91,15 @@ userSchema.statics.checkProvidedUser = async function (userId, permissionType) {
     user = await this.findById(userId);
   } catch (err) {
     console.log(err);
-    return {
-      result: false,
-      msg: "Can't retrieve a user from database",
-      status: 500,
-    };
+    return { result: false, msg: ERR_DATA.interval.message, status: ERR_DATA.interval.status };
   }
 
   if (!user) {
-    return {
-      result: false,
-      msg: "Can't find a user with provided id",
-      status: 404,
-    };
+    return { result: false, msg: ERR_DATA.no_user.message, status: ERR_DATA.no_user.status };
   }
 
   if (!user.permission[type][operation]) {
-    return {
-      result: false,
-      msg: "You are not allowed to do this",
-      status: 403,
-    };
+    return { result: false, msg: ERR_DATA.no_permission.message, status: ERR_DATA.no_permission.status };
   }
 
   return { result: true, user };
@@ -126,12 +110,16 @@ userSchema.methods.generateAccessToken = async function () {
   const user = this;
   const tokens = {};
 
-  tokens.accessTokenExpiredAt = Math.floor(Date.now()) + 60 * 60 * 1000;
-
-  tokens.accessToken = jwt.sign(
-    { id: user._id.toString(), exp: tokens.accessTokenExpiredAt / 1000 },
-    process.env.SECRET
-  );
+  tokens.accessTokenExpiredAt = Math.floor(Date.now()) + ACCESS_TOKEN_DUR;
+  try {
+    tokens.accessToken = jwt.sign(
+      { id: user._id.toString(), exp: tokens.accessTokenExpiredAt / IN_MS },
+      process.env.SECRET
+    );
+  } catch (err) {
+    console.log(err);
+    return { result: false, msg: ERR_DATA.interval.message, status: ERR_DATA.interval.status };
+  }
 
   return tokens;
 };
@@ -141,28 +129,54 @@ userSchema.methods.generateRefreshToken = async function () {
   const user = this;
   const tokens = {};
 
-  tokens.refreshTokenExpiredAt = Math.floor(Date.now()) + 60 * 60 * 24 * 1000;
-  tokens.refreshToken = jwt.sign(
-    { id: user._id.toString(), exp: tokens.refreshTokenExpiredAt / 1000 },
-    process.env.SECRET
-  );
-
-  // user.tokens = user.tokens.filter((token) => {
-  //   return jwt.verify(token, process.env.SECRET, (err, decoded) => {
-  //     if (err) {
-  //       return false;
-  //     }
-  //     return true;
-  //   });
-  // });
+  tokens.refreshTokenExpiredAt = Math.floor(Date.now()) + REFRESH_TOKEN_DUR;
+  try {
+    tokens.refreshToken = jwt.sign(
+      { id: user._id.toString(), exp: tokens.refreshTokenExpiredAt / IN_MS },
+      process.env.SECRET
+    );
+  } catch (err) {
+    console.log(err);
+    return { result: false, msg: ERR_DATA.interval.message, status: ERR_DATA.interval.status };
+  }
+  // Delete all expired tokens from DB
+  user.tokens = user.tokens.filter((token) => {
+    const decodedToken = jwt.decode(token.token, { complete: true });
+    if (decodedToken.payload.exp * IN_MS > Date.now()) {
+      return true;
+    }
+    return false;
+  });
 
   user.tokens = user.tokens.concat({
     token: tokens.refreshToken,
   });
-
-  await user.save();
+  try {
+    await user.save();
+  } catch (err) {
+    console.log(err);
+    return { result: false, msg: ERR_DATA.interval.message, status: ERR_DATA.interval.status };
+  }
 
   return tokens;
+};
+
+// Generate response object
+userSchema.methods.generateResponseObj = function (tokens) {
+  const user = this;
+  return {
+    _id: user.id,
+    username: user.username,
+    firstName: user.firstName,
+    middleName: user.middleName,
+    surName: user.surName,
+    image: user.image,
+    permission: user.permission,
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    accessTokenExpiredAt: tokens.accessTokenExpiredAt,
+    refreshTokenExpiredAt: tokens.refreshTokenExpiredAt,
+  };
 };
 
 // Check if password is valid
@@ -174,11 +188,7 @@ userSchema.methods.checkPassword = async function (password) {
     isMatch = await bcrypt.compare(password, user.password);
   } catch (err) {
     console.log(err);
-    return {
-      result: "Error",
-      msg: "Interval error (password)",
-      status: 500,
-    };
+    return { result: false, msg: ERR_DATA.interval.message, status: ERR_DATA.interval.status };
   }
 
   return isMatch;
