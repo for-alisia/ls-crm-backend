@@ -36,7 +36,7 @@ const createNews = async (req, res, next) => {
   try {
     const validateUser = await User.checkProvidedUser(id, permissionType);
 
-    if (validateUser.result === "Error") {
+    if (!validateUser.result) {
       return next(new HttpError(validateUser.msg, validateUser.status));
     }
   } catch (err) {
@@ -77,7 +77,7 @@ const updateNews = async (req, res, next) => {
   try {
     const validateUser = await User.checkProvidedUser(userId, permissionType);
 
-    if (validateUser.result === "Error") {
+    if (!validateUser.result) {
       return next(new HttpError(validateUser.msg, validateUser.status));
     }
   } catch (err) {
@@ -119,7 +119,7 @@ const deleteNews = async (req, res, next) => {
   try {
     const validateUser = await User.checkProvidedUser(userId, permissionType);
 
-    if (validateUser.result === "Error") {
+    if (!validateUser.result) {
       return next(new HttpError(validateUser.msg, validateUser.status));
     }
   } catch (err) {

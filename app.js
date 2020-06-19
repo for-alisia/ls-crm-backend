@@ -8,7 +8,12 @@ const mongoose = require("mongoose");
 const socketio = require("socket.io");
 
 const HttpError = require("./utils/http-error");
-const { MONGO_URL, MONGOOSE_CONF } = require("./config");
+const {
+  MONGO_URL,
+  MONGOOSE_CONF,
+  ERR_DATA,
+  DEFAULT_PORT,
+} = require("./config");
 
 const corsHeaders = require("./middlewares/cors-headers");
 const userRoutes = require("./api/v1.0/user-routes");
@@ -19,20 +24,27 @@ const app = express();
 const server = http.createServer(app);
 const io = socketio(server);
 
+// Middlewares (common)
 app.use(bodyParser.json());
 
 app.use("/uploads/images", express.static(path.join("uploads", "images")));
 
 app.use(corsHeaders);
 
+// Routes
 app.use("/api", userRoutes);
 app.use("/api", newsRoutes);
 
-app.use((req, res, next) => {
-  const error = new HttpError("Page not found", 404);
+// 404
+app.use((req, res, _) => {
+  const error = new HttpError(
+    ERR_DATA.not_found.message,
+    ERR_DATA.not_found.status
+  );
   throw error;
 });
 
+// Error handling
 app.use((error, req, res, next) => {
   if (req.file) {
     fs.unlink(req.file.path, () => {
@@ -42,8 +54,8 @@ app.use((error, req, res, next) => {
   if (res.headerSent) {
     return next(error);
   }
-  res.status(error.code || 500).json({
-    message: error.message || "An unknown error occured",
+  res.status(error.code || ERR_DATA.unknown.status).json({
+    message: error.message || ERR_DATA.unknown.message,
   });
 });
 
@@ -53,8 +65,10 @@ mongoose
   .connect(MONGO_URL, MONGOOSE_CONF)
   .then(() => {
     console.log("Successfull connection");
-    server.listen(process.env.PORT || 8000, function () {
-      console.log(`Server is listening on: ${process.env.PORT || "8000"}`);
+    server.listen(process.env.PORT || DEFAULT_PORT, function () {
+      console.log(
+        `Server is listening on: ${process.env.PORT || DEFAULT_PORT}`
+      );
     });
   })
   .catch((err) => {

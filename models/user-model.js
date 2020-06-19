@@ -3,6 +3,8 @@ const uniqueValidator = require("mongoose-unique-validator");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+const { ERR_DATA } = require("../config");
+
 const Schema = mongoose.Schema;
 
 const userSchema = new Schema({
@@ -52,12 +54,12 @@ userSchema.statics.findByCredentials = async function (username, password) {
     user = await this.findOne({ username });
   } catch (err) {
     console.log(err);
-    return { result: "Error", msg: "Interval error (username)", status: 500 };
+    return { result: false, msg: "Interval error (username)", status: 500 };
   }
 
   if (!user) {
     return {
-      result: "Error",
+      result: false,
       msg: "Invalid credentials (username)",
       status: 403,
     };
@@ -68,7 +70,7 @@ userSchema.statics.findByCredentials = async function (username, password) {
   } catch (err) {
     console.log(err);
     return {
-      result: "Error",
+      result: false,
       msg: "Interval error (password)",
       status: 500,
     };
@@ -76,13 +78,13 @@ userSchema.statics.findByCredentials = async function (username, password) {
 
   if (!isMatch) {
     return {
-      result: "Error",
+      result: false,
       msg: "Invalid credentials (password)",
       status: 403,
     };
   }
 
-  return { result: "Success", user };
+  return { result: true, user };
 };
 
 // Check user's permissions
@@ -94,7 +96,7 @@ userSchema.statics.checkProvidedUser = async function (userId, permissionType) {
   } catch (err) {
     console.log(err);
     return {
-      result: "Error",
+      result: false,
       msg: "Can't retrieve a user from database",
       status: 500,
     };
@@ -102,7 +104,7 @@ userSchema.statics.checkProvidedUser = async function (userId, permissionType) {
 
   if (!user) {
     return {
-      result: "Error",
+      result: false,
       msg: "Can't find a user with provided id",
       status: 404,
     };
@@ -110,13 +112,13 @@ userSchema.statics.checkProvidedUser = async function (userId, permissionType) {
 
   if (!user.permission[type][operation]) {
     return {
-      result: "Error",
+      result: false,
       msg: "You are not allowed to do this",
       status: 403,
     };
   }
 
-  return { result: "Success", user };
+  return { result: true, user };
 };
 
 // Generate Access Token

@@ -1,6 +1,11 @@
 const users = {};
 const history = {};
 
+// Example
+myHistory = {
+  roomId: {},
+};
+
 module.exports = (io) => {
   // new connection
   io.sockets.on("connection", (socket) => {
@@ -20,6 +25,7 @@ module.exports = (io) => {
 
     // new message
     socket.on("message:add", ({ senderId, recipientId, roomId, text }) => {
+      console.log(senderId, recipientId, roomId);
       if (!history[roomId]) {
         history[roomId] = [];
       }
