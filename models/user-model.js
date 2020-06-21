@@ -1,9 +1,9 @@
-const mongoose = require("mongoose");
-const uniqueValidator = require("mongoose-unique-validator");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+const mongoose = require('mongoose');
+const uniqueValidator = require('mongoose-unique-validator');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
-const { ERR_DATA, ACCESS_TOKEN_DUR, REFRESH_TOKEN_DUR, IN_MS } = require("../config");
+const { ERR_DATA, ACCESS_TOKEN_DUR, REFRESH_TOKEN_DUR, IN_MS } = require('../config');
 
 const Schema = mongoose.Schema;
 
@@ -42,6 +42,7 @@ const userSchema = new Schema({
       D: { type: Boolean },
     },
   },
+  deleted: { type: Boolean },
 });
 
 userSchema.plugin(uniqueValidator);
@@ -51,7 +52,7 @@ userSchema.statics.findByCredentials = async function (username, password) {
   let user, isMatch;
 
   try {
-    user = await this.findOne({ username });
+    user = await this.findOne({ username, deleted: false });
   } catch (err) {
     console.log(err);
     return { result: false, msg: ERR_DATA.interval.message, status: ERR_DATA.interval.status };
@@ -88,7 +89,7 @@ userSchema.statics.checkProvidedUser = async function (userId, permissionType) {
   const { type, operation } = permissionType;
   let user;
   try {
-    user = await this.findById(userId);
+    user = await this.findOne({ _id: userId, deleted: false });
   } catch (err) {
     console.log(err);
     return { result: false, msg: ERR_DATA.interval.message, status: ERR_DATA.interval.status };
@@ -195,14 +196,14 @@ userSchema.methods.checkPassword = async function (password) {
 };
 
 // Hashed password before saving
-userSchema.pre("save", async function (next) {
+userSchema.pre('save', async function (next) {
   const user = this;
 
-  if (user.isModified("password")) {
+  if (user.isModified('password')) {
     user.password = await bcrypt.hash(user.password, 8);
   }
 
   next();
 });
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.model('User', userSchema);

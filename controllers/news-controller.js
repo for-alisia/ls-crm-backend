@@ -1,20 +1,22 @@
-const { validationResult } = require("express-validator");
+const { validationResult } = require('express-validator');
 
-const HttpError = require("../utils/http-error");
-const News = require("../models/news-model");
-const User = require("../models/user-model");
+const HttpError = require('../utils/http-error');
+const News = require('../models/news-model');
+const User = require('../models/user-model');
+const { ERR_DATA } = require('../config');
 
 // GET ALL NEWS (return news list)
 const getNews = async (req, res, next) => {
+  let responseList;
   try {
     const newsList = await News.find({});
-    const responseList = await generateResponseList(newsList);
-
-    res.send(responseList);
+    responseList = await generateResponseList(newsList);
   } catch (err) {
     console.log(err);
-    return next(new HttpError("Can't retrieve news list from database", 500));
+    return next(new HttpError(ERR_DATA.get_data.message, ERR_DATA.get_data.status));
   }
+
+  res.send(responseList);
 };
 
 // CREATE NEWS (return updated news list)
@@ -22,16 +24,18 @@ const createNews = async (req, res, next) => {
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
-    return next(new HttpError("Invalid inputs passed, check your data", 422));
+    return next(new HttpError(ERR_DATA.invalid_inputs.message, ERR_DATA.invalid_inputs.status));
   }
 
   const { text, title } = req.body;
   const { id } = res.locals.userData;
 
   const permissionType = {
-    type: "news",
-    operation: "C",
+    type: 'news',
+    operation: 'C',
   };
+
+  let responseList;
   // Check user and his permissions
   try {
     const validateUser = await User.checkProvidedUser(id, permissionType);
@@ -41,7 +45,7 @@ const createNews = async (req, res, next) => {
     }
   } catch (err) {
     console.log(err);
-    return next(new HttpError("Can't check user", 500));
+    return next(new HttpError(ERR_DATA.no_check.message, ERR_DATA.no_check.status));
   }
   // Create news
   const news = new News({
@@ -54,13 +58,13 @@ const createNews = async (req, res, next) => {
     await news.save();
 
     const newsList = await News.find({});
-    const responseList = await generateResponseList(newsList);
-
-    res.send(responseList);
+    responseList = await generateResponseList(newsList);
   } catch (err) {
     console.log(err);
-    return next(new HttpError("Can't create news", 500));
+    return next(new HttpError(ERR_DATA.creation_failed.message, ERR_DATA.creation_failed.status));
   }
+
+  res.send(responseList);
 };
 
 // UPDATE NEWS (return updated news list)
@@ -69,10 +73,10 @@ const updateNews = async (req, res, next) => {
   const { id: userId } = res.locals.userData;
   const { text, title } = req.body;
   const permissionType = {
-    type: "news",
-    operation: "U",
+    type: 'news',
+    operation: 'U',
   };
-  let news;
+  let news, responseList;
   // Check user and his permissions
   try {
     const validateUser = await User.checkProvidedUser(userId, permissionType);
@@ -82,28 +86,30 @@ const updateNews = async (req, res, next) => {
     }
   } catch (err) {
     console.log(err);
-    return next(new HttpError("Can't check user", 500));
+    return next(new HttpError(ERR_DATA.no_check.message, ERR_DATA.no_check.status));
   }
   // Update news and save it
   try {
     news = await News.findById(newsId);
+
     news.title = title;
     news.text = text;
+
     await news.save();
   } catch (err) {
     console.log(err);
-    return next(new HttpError("Can't update news, please try again", 500));
+    return next(new HttpError(ERR_DATA.update_failed.message, ERR_DATA.update_failed.status));
   }
 
   try {
     const newsList = await News.find({});
-    const responseList = await generateResponseList(newsList);
-
-    res.send(responseList);
+    responseList = await generateResponseList(newsList);
   } catch (err) {
     console.log(err);
-    return next(new HttpError("Can't return news, please try again", 500));
+    return next(new HttpError(ERR_DATA.get_data.message, ERR_DATA.get_data.status));
   }
+
+  res.send(responseList);
 };
 
 // DELETE NEWS (return updated news list)
@@ -111,10 +117,10 @@ const deleteNews = async (req, res, next) => {
   const { id: newsId } = req.params;
   const { id: userId } = res.locals.userData;
   const permissionType = {
-    type: "news",
-    operation: "D",
+    type: 'news',
+    operation: 'D',
   };
-  let news;
+  let news, responseList;
   // Check user
   try {
     const validateUser = await User.checkProvidedUser(userId, permissionType);
@@ -124,7 +130,7 @@ const deleteNews = async (req, res, next) => {
     }
   } catch (err) {
     console.log(err);
-    return next(new HttpError("Can't check user", 500));
+    return next(new HttpError(ERR_DATA.no_check.message, ERR_DATA.no_check.status));
   }
   // Delete news
   try {
@@ -132,24 +138,24 @@ const deleteNews = async (req, res, next) => {
     await news.remove();
   } catch (err) {
     console.log(err);
-    return next(new HttpError("Can't delete news, please try again", 500));
+    return next(new HttpError(ERR_DATA.delete_failed.message, ERR_DATA.delete_failed.status));
   }
 
   try {
     const newsList = await News.find({});
-    const responseList = await generateResponseList(newsList);
-
-    res.send(responseList);
+    responseList = await generateResponseList(newsList);
   } catch (err) {
     console.log(err);
-    return next(new HttpError("Can't return news, please try again", 500));
+    return next(new HttpError(ERR_DATA.get_data.message, ERR_DATA.get_data.status));
   }
+
+  res.send(responseList);
 };
 
 // Configure response object
 async function generateResponseNews(news) {
   try {
-    const user = await User.findOne({ _id: news.user }, "-password -tokens");
+    const user = await User.findOne({ _id: news.user }, '-password -tokens');
 
     return {
       id: news.id,

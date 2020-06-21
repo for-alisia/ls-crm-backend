@@ -4,7 +4,7 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "test": "jest --watchAll --verbose",
+    "test": "jest --watchAll --verbose --detectOpenHandles --runInBand",
     "start": "nodemon app.js"
   },
   "author": "Elena Romanova",
@@ -31,6 +31,7 @@
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1",
     "jest": "^26.0.1",
-    "nodemon": "^2.0.4"
+    "nodemon": "^2.0.4",
+    "supertest": "^4.0.2"
   }
 }

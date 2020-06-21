@@ -1,24 +1,19 @@
-const path = require("path");
-const fs = require("fs");
-const http = require("http");
+const path = require('path');
+const fs = require('fs');
+const http = require('http');
 
-const express = require("express");
-const bodyParser = require("body-parser");
-const mongoose = require("mongoose");
-const socketio = require("socket.io");
+const express = require('express');
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+const socketio = require('socket.io');
 
-const HttpError = require("./utils/http-error");
-const {
-  MONGO_URL,
-  MONGOOSE_CONF,
-  ERR_DATA,
-  DEFAULT_PORT,
-} = require("./config");
+const HttpError = require('./utils/http-error');
+const { MONGO_URL, MONGOOSE_CONF, ERR_DATA, DEFAULT_PORT } = require('./config');
 
-const corsHeaders = require("./middlewares/cors-headers");
-const userRoutes = require("./api/v1.0/user-routes");
-const newsRoutes = require("./api/v1.0/news-routes");
-const socketRun = require("./chat");
+const corsHeaders = require('./middlewares/cors-headers');
+const userRoutes = require('./api/v1.0/user-routes');
+const newsRoutes = require('./api/v1.0/news-routes');
+const socketRun = require('./chat');
 
 const app = express();
 const server = http.createServer(app);
@@ -27,20 +22,17 @@ const io = socketio(server);
 // Middlewares (common)
 app.use(bodyParser.json());
 
-app.use("/uploads/images", express.static(path.join("uploads", "images")));
+app.use('/uploads/images', express.static(path.join('uploads', 'images')));
 
 app.use(corsHeaders);
 
 // Routes
-app.use("/api", userRoutes);
-app.use("/api", newsRoutes);
+app.use('/api', userRoutes);
+app.use('/api', newsRoutes);
 
 // 404
 app.use((req, res, _) => {
-  const error = new HttpError(
-    ERR_DATA.not_found.message,
-    ERR_DATA.not_found.status
-  );
+  const error = new HttpError(ERR_DATA.not_found.message, ERR_DATA.not_found.status);
   throw error;
 });
 
@@ -64,13 +56,13 @@ socketRun(io);
 mongoose
   .connect(MONGO_URL, MONGOOSE_CONF)
   .then(() => {
-    console.log("Successfull connection");
+    console.log(`Successfull connection to: ${process.env.DB_NAME}`);
     server.listen(process.env.PORT || DEFAULT_PORT, function () {
-      console.log(
-        `Server is listening on: ${process.env.PORT || DEFAULT_PORT}`
-      );
+      console.log(`Server is listening on: ${process.env.PORT || DEFAULT_PORT}`);
     });
   })
   .catch((err) => {
     console.log(err);
   });
+
+module.exports = server;

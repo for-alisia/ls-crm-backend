@@ -28,3 +28,35 @@ describe('User.generateAccessToken', () => {
     expect(typeof token.accessTokenExpiredAt).toBe('number');
   });
 });
+
+describe('user.generateResponseObj', () => {
+  it('returns correct object', () => {
+    const user = new User({
+      username: 'test',
+      firstName: 'test',
+      middleName: 'test',
+      surName: 'test',
+      image: 'test',
+    });
+    const tokens = {
+      accessToken: 'test',
+      refreshToken: 'test',
+      accessTokenExpiredAt: 'test',
+      refreshTokenExpiredAt: 'test',
+    };
+    const responseUser = user.generateResponseObj(tokens);
+    expect(responseUser).toMatchObject({
+      _id: user.id,
+      username: user.username,
+      firstName: user.firstName,
+      middleName: user.middleName,
+      surName: user.surName,
+      image: user.image,
+      permission: user.permission,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      accessTokenExpiredAt: tokens.accessTokenExpiredAt,
+      refreshTokenExpiredAt: tokens.refreshTokenExpiredAt,
+    });
+  });
+});

@@ -1,9 +1,9 @@
-const { validationResult } = require("express-validator");
-const jwt = require("jsonwebtoken");
+const { validationResult } = require('express-validator');
+const jwt = require('jsonwebtoken');
 
-const HttpError = require("../utils/http-error");
-const { ERR_DATA, DEFAULT_PERMISSIONS, IN_MS } = require("../config");
-const User = require("../models/user-model");
+const HttpError = require('../utils/http-error');
+const { ERR_DATA, DEFAULT_PERMISSIONS, IN_MS } = require('../config');
+const User = require('../models/user-model');
 
 // CREATION (return user object without authorization)
 const createUser = async (req, res, next) => {
@@ -13,7 +13,7 @@ const createUser = async (req, res, next) => {
     return next(new HttpError(ERR_DATA.invalid_inputs.message, ERR_DATA.invalid_inputs.status));
   }
   // Get inputs from request body
-  const { username, surName = "", firstName = "", middleName = "", password } = req.body;
+  const { username, surName = '', firstName = '', middleName = '', password } = req.body;
 
   // Check if user is already exists
   let existingUser;
@@ -35,6 +35,7 @@ const createUser = async (req, res, next) => {
     middleName,
     password,
     permission: DEFAULT_PERMISSIONS,
+    deleted: false,
   });
   // Save new user in DB
   try {
@@ -92,7 +93,7 @@ const refreshToken = async (req, res, next) => {
   try {
     user = await User.findOne({
       _id: decodedToken.id,
-      "tokens.token": token,
+      'tokens.token': token,
     });
   } catch (err) {
     return next(new HttpError(ERR_DATA.invalid_credentials.message, ERR_DATA.invalid_credentials.status));
