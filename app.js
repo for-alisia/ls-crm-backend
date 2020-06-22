@@ -53,16 +53,19 @@ app.use((error, req, res, next) => {
 
 socketRun(io);
 
-mongoose
-  .connect(MONGO_URL, MONGOOSE_CONF)
-  .then(() => {
-    console.log(`Successfull connection to: ${process.env.DB_NAME}`);
-    server.listen(process.env.PORT || DEFAULT_PORT, function () {
-      console.log(`Server is listening on: ${process.env.PORT || DEFAULT_PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.log(err);
-  });
+// mongoose
+//   .connect(MONGO_URL, MONGOOSE_CONF)
+//   .then(() => {
+//     console.log(`Successfull connection to: ${process.env.DB_NAME}`);
+//   })
+//   .catch((err) => {
+//     console.log(err);
+//   });
+mongoose.Promise = global.Promise;
+mongoose.connect(MONGO_URL, MONGOOSE_CONF);
+
+server.listen(process.env.PORT || DEFAULT_PORT, function () {
+  console.log(`Server is listening on: ${process.env.PORT || DEFAULT_PORT}`);
+});
 
 module.exports = server;

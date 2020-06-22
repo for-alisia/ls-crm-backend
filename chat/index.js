@@ -1,74 +1,60 @@
-const users = {};
-const history = {};
+const Chat = require('../models/chat-model');
+const { MSG_LIMIT } = require('../config');
 
-// Example
-myHistory = {
-  roomId: {},
-};
+const connectedUsers = {};
 
 module.exports = (io) => {
-  // new connection
-  io.sockets.on("connection", (socket) => {
+  io.on('connection', (socket) => {
     const socketId = socket.id;
-    // user connected
-    socket.on("users:connect", ({ userId, username }) => {
-      console.log(`Connected user ${username} (id:${userId})`);
-      users[socketId] = {
-        username,
-        socketId,
-        userId,
-        activeRoom: null,
-      };
-      socket.emit("users:list", Object.values(users));
-      socket.broadcast.emit("users:add", users[socketId]);
+    // User connected
+    socket.on('users:connect', function (data) {
+      const user = { ...data, socketId, activeRoom: null };
+      console.log(`user:connect: ${data.username} (userId: ${data.userId}) on socket: ${socketId}`);
+      connectedUsers[socketId] = user;
+      socket.emit('users:list', Object.values(connectedUsers));
+      socket.broadcast.emit('users:add', user);
     });
-
-    // new message
-    socket.on("message:add", ({ senderId, recipientId, roomId, text }) => {
-      console.log(senderId, recipientId, roomId);
-      if (!history[roomId]) {
-        history[roomId] = [];
-      }
-      if (users[roomId]) {
-        Object.values(users).forEach((user) => {
-          if (user.activeRoom && user.activeRoom === roomId) {
-            io.to(user.socketId).emit("message:add", {
-              senderId,
-              recipientId,
-              text,
-            });
-          }
-        });
-        history[roomId].push({ senderId, text });
+    // User added a message
+    socket.on('message:add', async function (data) {
+      console.log('message:add');
+      console.log(data);
+      const { senderId, recipientId, text } = data;
+      socket.emit('message:add', data);
+      socket.broadcast.to(data.roomId).emit('message:add', data);
+      // Save msg to DB
+      const newMsg = new Chat({ text, senderId, recipientId });
+      try {
+        await newMsg.save();
+      } catch (err) {
+        console.log(err);
       }
     });
+    // Send history to user
+    socket.on('message:history', async function (data) {
+      console.log('message:history');
+      console.log(data);
+      const { recipientId, userId } = data;
 
-    // history
-    socket.on("message:history", ({ recipientId, userId }) => {
-      const currentUserSocketId = getSocketId(recipientId);
-      users[socketId].activeRoom = getSocketId(recipientId);
-      if (currentUserSocketId && history[currentUserSocketId]) {
-        socket.emit("message:history", history[currentUserSocketId]);
+      try {
+        const history = await Chat.find({
+          $or: [
+            { senderId: userId, recipientId },
+            { recipientId: userId, senderId: recipientId },
+          ],
+        }).limit(MSG_LIMIT);
+
+        if (history) {
+          socket.emit('message:history', history);
+        }
+        console.log(history);
+      } catch (err) {
+        console.log(err);
       }
     });
-
-    // disconnect
-    socket.on("disconnect", () => {
-      if (users[socketId]) {
-        socket.broadcast.emit("users:leave", socketId);
-        delete users[socketId];
-        delete history[socketId];
-      }
+    // User disconnect
+    socket.on('disconnect', function (data) {
+      delete connectedUsers[socketId];
+      socket.broadcast.emit('users:leave', socketId);
     });
   });
 };
-
-function getSocketId(userId) {
-  for (const user in users) {
-    if (users.hasOwnProperty(user)) {
-      if (users[user].userId === userId) {
-        return users[user].socketId;
-      }
-    }
-  }
-}

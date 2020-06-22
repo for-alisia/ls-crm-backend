@@ -14,18 +14,24 @@ describe('auth controllers', () => {
   });
 
   describe('registration of a new user', () => {
+    const payload = { username: 'test', password: 'test' };
+
     it('returns 422 if payload are not provided', async () => {
       const res = await request(server).post('/api/registration');
 
       expect(res.status).toBe(422);
     });
 
-    it('returns 422 if payload are not provided', async () => {
-      const res = await request(server).post('/api/registration').send({ username: 'test1', password: 'test' });
+    it('returns correct user on correct request', async () => {
+      const res = await request(server).post('/api/registration').send(payload);
 
       expect(res.status).toBe(200);
-    });
 
-    // it("returns correct user's object in the response", async () => {});
+      const userToDelete = await User.findOne({ username: payload.username });
+
+      if (userToDelete) {
+        await userToDelete.remove();
+      }
+    });
   });
 });

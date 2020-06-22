@@ -55,6 +55,7 @@ const updateUser = async (req, res, next) => {
     }
     user.password = newPassword;
   }
+  // TODO refactore this part via using of promises
   // If user wants to change avatar, resize it, save, delete the old one
   if (image) {
     const newImage = path.join('uploads', 'images', req.file.filename);
@@ -187,14 +188,13 @@ const getAllUsers = async (req, res, next) => {
     type: 'settings',
     operation: 'R',
   };
-  let users, user;
+  let users;
   // Check if user has permission to get all users
   try {
     const validateUser = await User.checkProvidedUser(id, permissionType);
     if (!validateUser.result) {
       return next(new HttpError(validateUser.msg, validateUser.status));
     }
-    user = validateUser.user;
   } catch (err) {
     console.log(err);
     return next(new HttpError(ERR_DATA.no_check.message, ERR_DATA.no_check.status));
@@ -218,7 +218,7 @@ const updatePermission = async (req, res, next) => {
     type: 'settings',
     operation: 'U',
   };
-  let user, updatedUser;
+  let updatedUser;
   // Check if user exists and he has a permission to do this
   try {
     const validateUser = await User.checkProvidedUser(id, permissionType);
@@ -226,8 +226,6 @@ const updatePermission = async (req, res, next) => {
     if (!validateUser.result) {
       return next(new HttpError(validateUser.msg, validateUser.status));
     }
-
-    user = validateUser.user;
   } catch (err) {
     console.log(err);
     return next(new HttpError(ERR_DATA.no_check.message, ERR_DATA.no_check.status));
