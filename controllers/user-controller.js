@@ -1,9 +1,7 @@
 const fs = require('fs');
-const sharp = require('sharp');
-const path = require('path');
 
 const HttpError = require('../utils/http-error');
-const { ERR_DATA, RESIZE } = require('../config');
+const { ERR_DATA } = require('../config');
 const User = require('../models/user-model');
 const News = require('../models/news-model');
 
@@ -29,7 +27,8 @@ const getUser = async (req, res, next) => {
 const updateUser = async (req, res, next) => {
   const { id } = res.locals.userData;
   const { firstName, middleName, surName, oldPassword, newPassword } = req.body;
-  const image = req.file ? req.file.path : null;
+  // const image = req.file ? req.file.path : null;
+  const image = res.locals.userImage || null;
   let user;
   // Check if the user exists
   try {
@@ -55,28 +54,19 @@ const updateUser = async (req, res, next) => {
     }
     user.password = newPassword;
   }
-  // TODO refactore this part via using of promises
-  // If user wants to change avatar, resize it, save, delete the old one
+
+  // If user provided new image, delete the old one
   if (image) {
-    const newImage = path.join('uploads', 'images', req.file.filename);
-    sharp(image)
-      .resize(RESIZE.w, RESIZE.h)
-      .toFile(newImage, (err) => {
-        if (err) {
-          console.log(err);
-        } else {
-          fs.unlink(image, () => {});
-          if (user.image) {
-            fs.unlink(user.image, () => {});
-          }
-          user.image = newImage;
-        }
-      });
+    fs.unlink(user.image, (err) => {
+      console.log(err);
+    });
   }
+
   // Save other fields
   user.firstName = firstName || user.firstName;
   user.middleName = middleName || user.middleName;
   user.surName = surName || user.surName;
+  user.image = image || user.image;
   // Save all changes in DB
   try {
     await user.save();

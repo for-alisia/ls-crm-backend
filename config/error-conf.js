@@ -55,4 +55,8 @@ module.exports = {
     status: 500,
     message: "Can't retrieve data, please try again",
   },
+  no_img: {
+    status: 500,
+    message: "Cant't save image, please try again",
+  },
 };

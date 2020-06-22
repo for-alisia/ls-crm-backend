@@ -26,6 +26,7 @@ module.exports = (io) => {
       try {
         await newMsg.save();
       } catch (err) {
+        // TODO Как здесь обрабатывать ошибки?
         console.log(err);
       }
     });
