@@ -5,23 +5,31 @@
   "main": "app.js",
   "scripts": {
     "test": "jest --watchAll --verbose --detectOpenHandles --runInBand",
-    "start": "nodemon app.js --ignore tests"
+    "dev": "nodemon app.js --ignore tests",
+    "start": "node app.js"
+  },
+  "engines": {
+    "node": "12.18.0"
   },
   "author": "Elena Romanova",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.19.0",
+    "compression": "^1.7.4",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "express-validator": "^6.5.0",
+    "helmet": "^3.23.1",
     "jsonwebtoken": "^8.5.1",
     "mongoose": "^5.9.18",
     "mongoose-unique-validator": "^2.0.3",
     "multer": "^1.4.2",
     "sharp": "^0.25.4",
     "socket.io": "^2.3.0",
-    "uuid": "^8.1.0"
+    "uuid": "^8.1.0",
+    "winston": "^3.3.1",
+    "winston-mongodb": "^5.0.1"
   },
   "devDependencies": {
     "eslint": "^7.2.0",

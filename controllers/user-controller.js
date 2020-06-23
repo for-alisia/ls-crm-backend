@@ -27,7 +27,6 @@ const getUser = async (req, res, next) => {
 const updateUser = async (req, res, next) => {
   const { id } = res.locals.userData;
   const { firstName, middleName, surName, oldPassword, newPassword } = req.body;
-  // const image = req.file ? req.file.path : null;
   const image = res.locals.userImage || null;
   let user;
   // Check if the user exists
@@ -54,14 +53,12 @@ const updateUser = async (req, res, next) => {
     }
     user.password = newPassword;
   }
-
   // If user provided new image, delete the old one
-  if (image) {
+  if (image && user.image) {
     fs.unlink(user.image, (err) => {
       console.log(err);
     });
   }
-
   // Save other fields
   user.firstName = firstName || user.firstName;
   user.middleName = middleName || user.middleName;

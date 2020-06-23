@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 
 const HttpError = require('../utils/http-error');
+const { ERR_DATA } = require('../config');
 
 const auth = async (req, res, next) => {
   try {
@@ -14,7 +15,7 @@ const auth = async (req, res, next) => {
     res.locals.userData = { id: decodedToken.id };
     next();
   } catch (err) {
-    return next(new HttpError('Authentication failed', 403));
+    return next(new HttpError(ERR_DATA.no_auth.message, ERR_DATA.no_auth.status));
   }
 };
 

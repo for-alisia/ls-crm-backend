@@ -1,14 +1,14 @@
 const multer = require('multer');
 const uuid = require('uuid').v4;
 
-const { MIME_TYPE_MAP, IMG_LIMIT, ERR_DATA } = require('../config');
+const { MIME_TYPE_MAP, IMG_LIMIT, ERR_DATA, IMG_TEMP_PATH } = require('../config');
 const HttpError = require('../utils/http-error');
 
 const fileUpload = multer({
   limits: IMG_LIMIT,
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
-      cb(null, 'uploads/temp');
+      cb(null, IMG_TEMP_PATH);
     },
     filename: (req, file, cb) => {
       const ext = MIME_TYPE_MAP[file.mimetype];

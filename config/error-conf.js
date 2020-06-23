@@ -59,4 +59,8 @@ module.exports = {
     status: 500,
     message: "Cant't save image, please try again",
   },
+  no_auth: {
+    status: 403,
+    message: 'Authentification failed',
+  },
 };

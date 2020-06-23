@@ -11,3 +11,5 @@ exports.RESIZE = require('./img-conf').RESIZE;
 exports.MIME_TYPE_MAP = require('./img-conf').MIME_TYPE_MAP;
 exports.IMG_LIMIT = require('./img-conf').IMG_LIMIT;
 exports.MSG_LIMIT = require('./chat-config').MSG_LIMIT;
+exports.IMG_PATH = require('./img-conf').IMG_PATH;
+exports.IMG_TEMP_PATH = require('./img-conf').IMG_TEMP_PATH;

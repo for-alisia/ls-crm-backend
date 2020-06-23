@@ -1,4 +1,6 @@
 node_modules/
 config.js
-.env
-config/mongoose-conf.js
+/*.env
+coverage/
+.DS_Store
+npm-debug.log
