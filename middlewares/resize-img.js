@@ -19,5 +19,7 @@ module.exports = async (req, res, next) => {
       console.log(err);
       return next(new HttpError(ERR_DATA.no_img.message, ERR_DATA.no_img.status));
     }
+  } else {
+    next();
   }
 };
